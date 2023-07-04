@@ -301,8 +301,9 @@ def main():
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 beams.add(Beam(bird))
         screen.blit(bg_img, [0, 0])
-        if event.type == pg.KEYDOWN and event.key== pg.K_CAPSLOCK and len(shields)==0:
+        if event.type == pg.KEYDOWN and event.key== pg.K_CAPSLOCK and len(shields)==0 and score.score >= 50:
             shields.add(Shield(bird,400))
+            score.score_up(-50)
 
         if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
             emys.add(Enemy())

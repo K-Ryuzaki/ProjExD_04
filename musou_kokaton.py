@@ -321,7 +321,7 @@ class NeoGravity(pg.sprite.Sprite):
         if self.life < 0:
             self.kill()
 
-class Shield(pg.sprite.Sprite):
+class Shield(pg.sprite.Sprite): 
     """
     防御壁を作るクラス
     引数1 bird:防御壁を発動するこうかとん

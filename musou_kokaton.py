@@ -101,6 +101,7 @@ class Bird(pg.sprite.Sprite):
             self.dire = tuple(sum_mv)
             self.image = self.imgs[self.dire]
         screen.blit(self.image, self.rect)
+        
     
     def get_direction(self) -> tuple[int, int]:
         return self.dire
@@ -263,6 +264,8 @@ def main():
 
     tmr = 0
     clock = pg.time.Clock()
+    
+    
     while True:
         key_lst = pg.key.get_pressed()
         for event in pg.event.get():
@@ -271,6 +274,13 @@ def main():
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 beams.add(Beam(bird))
         screen.blit(bg_img, [0, 0])
+
+        pressed = pg.key.get_pressed() #左シフトキーが押し続けられているか判別
+        if pressed[pg.K_LSHIFT]: #押されている場合スピードを20に
+            bird.speed = 20
+        else:
+            bird.speed = 10 #押されていない場合10
+        
 
         if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
             emys.add(Enemy())

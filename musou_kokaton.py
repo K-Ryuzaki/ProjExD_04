@@ -74,6 +74,9 @@ class Bird(pg.sprite.Sprite):
         self.state="normal"
         self.hyper=-1
 
+    def change_speed(self, add):
+        self.speed = add
+
     def change_img(self, num: int, screen: pg.Surface):
         """
         こうかとん画像を切り替え，画面に転送する
@@ -238,6 +241,38 @@ class Enemy(pg.sprite.Sprite):
         self.rect.centery += self.vy
 
 
+class Gravity(pg.sprite.Sprite):
+    """
+    重力球に関するクラス
+    """
+    def __init__(self, bird: Bird, size: int, life: int):
+        """
+        こうかとんを中心に重力球を生成する
+        引数1 bird：重力球を放つこうかとん
+        引数2 size：重力球の半径
+        引数3 life：重力球の寿命
+        """
+        super().__init__()
+        chroma = (255, 255, 255)
+        self.image = pg.Surface((size*2, size*2))
+        self.image.fill(chroma)
+        pg.draw.circle(self.image, (0, 0, 0), (size, size), size)
+        self.image.set_colorkey(chroma)
+        self.image.set_alpha(128)
+        self.rect = self.image.get_rect()
+        self.rect.center = bird.rect.center
+        self.life = life
+        self.bird = bird
+
+    def update(self):
+        """
+        重力球の寿命_lifeを1減算する
+        """
+        if self.life < 0:
+            self.kill()
+        self.life -= 1
+
+
 class Score:
     """
     打ち落とした爆弾，敵機の数をスコアとして表示するクラス
@@ -260,6 +295,33 @@ class Score:
         screen.blit(self.image, self.rect)
 
 
+class Shield(pg.sprite.Sprite):
+    """
+    防御壁を作るクラス
+    引数1 bird:防御壁を発動するこうかとん
+    引数2 life:発動時間
+    """
+    def __init__(self,bird:Bird,life:int):
+        super().__init__()
+        vx,vy = bird.dire
+        theta = math.atan2(-vy,vx)
+        angle = math.degrees(theta)
+        self.image = pg.Surface((20,bird.rect.height*2 ))
+        self.image = pg.transform.rotozoom(self.image,angle,1.0) 
+        pg.draw.rect(self.image, (0,0,0), (pg.Rect(0,0,20,bird.rect.height*2)))
+        self.rect = self.image.get_rect()
+        self.rect.centerx = bird.rect.centerx+bird.rect.width*vx
+        self.rect.centery = bird.rect.centery+bird.rect.height*vy
+        self.life = life
+
+    def update(self):
+        """
+        発動時間を1減算して発動中は四角を有効化する
+        """
+        self.life -= 1
+        if self.life < 0:
+            self.kill()
+
 def main():
     pg.display.set_caption("真！こうかとん無双")
     screen = pg.display.set_mode((WIDTH, HEIGHT))
@@ -271,6 +333,9 @@ def main():
     beams = pg.sprite.Group()
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
+    shields = pg.sprite.Group()
+    gravities = pg.sprite.Group()
+
 
     tmr = 0
     clock = pg.time.Clock()
@@ -284,9 +349,15 @@ def main():
             if event.type == pg.KEYDOWN and event.key == pg.K_RSHIFT and score.score>=100:
                 bird.change_state("hyper",500)
                 score.score_up(-100)
-
+            if event.type == pg.KEYDOWN and event.key == pg.K_TAB and score.score >= 50:
+                gravities.add(Gravity(bird, 200, 500))
+                score.score_up(-50)
+            if event.type == pg.KEYDOWN and event.key== pg.K_CAPSLOCK and len(shields)==0 and score.score >= 50:
+                shields.add(Shield(bird,400))
+                score.score_up(-50)
+                
         screen.blit(bg_img, [0, 0])
-
+        
         if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
             emys.add(Enemy())
 
@@ -314,16 +385,34 @@ def main():
                 pg.display.update()
                 time.sleep(2)
                 return
+              
+        for bomb in pg.sprite.groupcollide(bombs, shields, True, False).keys():
+            exps.add(Explosion(bomb, 50))  
+            score.score_up(1)  # 1点アップ
+
+        for bomb in pg.sprite.groupcollide(bombs, gravities, True, False).keys():
+            exps.add(Explosion(bomb, 50))  # 爆発エフェクト
+
+        if len(pg.sprite.spritecollide(bird, bombs, True)) != 0:
+            bird.change_img(8, screen) # こうかとん悲しみエフェクト
+            score.update(screen)
+            pg.display.update()
+            time.sleep(2)
+            return
 
         bird.update(key_lst, screen)
         beams.update()
         beams.draw(screen)
+        shields.update()
+        shields.draw(screen)
         emys.update()
         emys.draw(screen)
         bombs.update()
         bombs.draw(screen)
         exps.update()
         exps.draw(screen)
+        gravities.update()
+        gravities.draw(screen)
         score.update(screen)
         pg.display.update()
         tmr += 1

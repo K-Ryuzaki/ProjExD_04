@@ -71,6 +71,9 @@ class Bird(pg.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = xy
         self.speed = 10
+        self.state="normal"
+        self.hyper=-1
+
     def change_speed(self, add):
         self.speed = add
 
@@ -82,6 +85,10 @@ class Bird(pg.sprite.Sprite):
         """
         self.image = pg.transform.rotozoom(pg.image.load(f"ex04/fig/{num}.png"), 0, 2.0)
         screen.blit(self.image, self.rect)
+
+    def change_state(self,state: str,hyper_life:int):
+        self.state=state
+        self.hyper_life=hyper_life
 
     def update(self, key_lst: list[bool], screen: pg.Surface):
         """
@@ -102,6 +109,11 @@ class Bird(pg.sprite.Sprite):
         if not (sum_mv[0] == 0 and sum_mv[1] == 0):
             self.dire = tuple(sum_mv)
             self.image = self.imgs[self.dire]
+        if self.state=="hyper":
+            self.hyper_life-=1
+            self.image=pg.transform.laplacian(self.image)
+            if self.hyper_life<0:
+                self.change_state("normal",-1)
         screen.blit(self.image, self.rect)
     
     def get_direction(self) -> tuple[int, int]:
@@ -334,14 +346,18 @@ def main():
                 return 0
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 beams.add(Beam(bird))
+            if event.type == pg.KEYDOWN and event.key == pg.K_RSHIFT and score.score>=100:
+                bird.change_state("hyper",500)
+                score.score_up(-100)
             if event.type == pg.KEYDOWN and event.key == pg.K_TAB and score.score >= 50:
                 gravities.add(Gravity(bird, 200, 500))
                 score.score_up(-50)
+            if event.type == pg.KEYDOWN and event.key== pg.K_CAPSLOCK and len(shields)==0 and score.score >= 50:
+                shields.add(Shield(bird,400))
+                score.score_up(-50)
+                
         screen.blit(bg_img, [0, 0])
-        if event.type == pg.KEYDOWN and event.key== pg.K_CAPSLOCK and len(shields)==0 and score.score >= 50:
-            shields.add(Shield(bird,400))
-            score.score_up(-50)
-
+        
         if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
             emys.add(Enemy())
 
@@ -359,6 +375,17 @@ def main():
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
             score.score_up(1)  # 1点アップ
 
+        for bomb in pg.sprite.spritecollide(bird, bombs, True):
+            if bird.state=="hyper":
+                exps.add(Explosion(bomb, 50))  
+                score.score_up(1)
+            if bird.state=="normal":
+                bird.change_img(8, screen) # こうかとん悲しみエフェクト
+                score.update(screen)
+                pg.display.update()
+                time.sleep(2)
+                return
+              
         for bomb in pg.sprite.groupcollide(bombs, shields, True, False).keys():
             exps.add(Explosion(bomb, 50))  
             score.score_up(1)  # 1点アップ

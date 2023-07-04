@@ -248,6 +248,31 @@ class Score:
         self.image = self.font.render(f"Score: {self.score}", 0, self.color)
         screen.blit(self.image, self.rect)
 
+class NeoGravity(pg.sprite.Sprite):
+    """
+    超強力重力場に関するクラス
+    """
+    def __init__(self,  life: int):
+        """
+        爆弾が爆発するエフェクトを生成する
+        引数1 life：発動時間
+        """
+        super().__init__()
+        self.image = pg.Surface((WIDTH, HEIGHT))
+        self.image.fill((255, 0, 0))
+        pg.draw.rect(self.image, (0, 0, 0), (0, 0, WIDTH, HEIGHT))
+        self.image.set_colorkey((255, 0, 0))
+        self.image.set_alpha(128)
+        self.rect = self.image.get_rect()
+        self.life = life
+
+    def update(self):
+        """
+        発動時間を１ずつ減らしていき，０になったら消滅
+        """
+        self.life -= 1
+        if self.life < 0:
+            self.kill()
 
 def main():
     pg.display.set_caption("真！こうかとん無双")
@@ -260,7 +285,7 @@ def main():
     beams = pg.sprite.Group()
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
-
+    neogravitys = pg.sprite.Group() 
     tmr = 0
     clock = pg.time.Clock()
     while True:
@@ -270,6 +295,10 @@ def main():
                 return 0
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 beams.add(Beam(bird))
+            if event.type == pg.KEYDOWN and event.key == pg.K_RETURN and score.score >= 200:   
+                neogravitys.add(NeoGravity(400))  # 超強力重力場発動
+                score.score_up(-200)
+
         screen.blit(bg_img, [0, 0])
 
         if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
@@ -289,6 +318,15 @@ def main():
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
             score.score_up(1)  # 1点アップ
 
+        for emy in pg.sprite.groupcollide(emys, neogravitys, True, False).keys(): 
+            exps.add(Explosion(emy, 100))  # 爆発エフェクト
+            bird.change_img(6, screen) # こうかとん喜びエフェクト
+
+        for bomb in pg.sprite.groupcollide(bombs, neogravitys, True, False).keys():
+            exps.add(Explosion(bomb, 50)) # 爆発エフェクト
+            bird.change_img(6, screen) # こうかとん喜びエフェクト       
+        
+        
         if len(pg.sprite.spritecollide(bird, bombs, True)) != 0:
             bird.change_img(8, screen) # こうかとん悲しみエフェクト
             score.update(screen)
@@ -305,6 +343,8 @@ def main():
         bombs.draw(screen)
         exps.update()
         exps.draw(screen)
+        neogravitys.update()    
+        neogravitys.draw(screen)
         score.update(screen)
         pg.display.update()
         tmr += 1
